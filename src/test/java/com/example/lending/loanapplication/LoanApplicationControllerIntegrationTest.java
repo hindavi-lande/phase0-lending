@@ -194,10 +194,10 @@ class LoanApplicationControllerIntegrationTest {
 
         mockMvc.perform(put("/api/loan-applications/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(applicationJson(graceId, "18000.00", 18, "Wedding", "APPROVED")))
+                        .content(applicationJson(graceId, "18000.00", 18, "Wedding", "UNDER_REVIEW")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.borrowerId").value(graceId.toString()))
-                .andExpect(jsonPath("$.status").value("APPROVED"));
+                .andExpect(jsonPath("$.status").value("UNDER_REVIEW"));
     }
 
     private UUID persistBorrower(String email) {

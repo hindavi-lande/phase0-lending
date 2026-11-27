@@ -3,9 +3,11 @@ package com.example.lending.common;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -29,6 +31,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleBorrowerHasApplications(BorrowerHasApplicationsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.of(HttpStatus.CONFLICT.value(), "Conflict", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ApplicationStateException.class)
+    public ResponseEntity<ApiError> handleApplicationState(ApplicationStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of(HttpStatus.CONFLICT.value(), "Conflict", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RequestValidationException.class)
+    public ResponseEntity<ApiError> handleRequestValidation(RequestValidationException ex) {
+        return ResponseEntity.badRequest()
+                .body(ApiError.validation(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "Bad Request",
+                        "Validation failed",
+                        ex.getFieldErrors()));
+    }
+
+    @ExceptionHandler({ObjectOptimisticLockingFailureException.class, PessimisticLockingFailureException.class})
+    public ResponseEntity<ApiError> handleLockFailure(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of(
+                        HttpStatus.CONFLICT.value(),
+                        "Conflict",
+                        "Application has already been decided"));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

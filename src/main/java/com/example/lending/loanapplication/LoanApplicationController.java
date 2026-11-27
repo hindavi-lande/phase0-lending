@@ -1,7 +1,11 @@
 package com.example.lending.loanapplication;
 
+import com.example.lending.loan.dto.LoanResponse;
+import com.example.lending.loanapplication.dto.ApprovalRequest;
 import com.example.lending.loanapplication.dto.LoanApplicationRequest;
 import com.example.lending.loanapplication.dto.LoanApplicationResponse;
+import com.example.lending.loanapplication.dto.RejectionRequest;
+import com.example.lending.loanapplication.dto.ReviewRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -54,5 +58,24 @@ public class LoanApplicationController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         loanApplicationService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/review")
+    public LoanApplicationResponse review(
+            @PathVariable UUID id, @Valid @RequestBody ReviewRequest request) {
+        return loanApplicationService.startReview(id, request);
+    }
+
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<LoanResponse> approve(
+            @PathVariable UUID id, @Valid @RequestBody ApprovalRequest request) {
+        LoanResponse loan = loanApplicationService.approve(id, request);
+        return ResponseEntity.created(URI.create("/api/loans/" + loan.loanId())).body(loan);
+    }
+
+    @PostMapping("/{id}/reject")
+    public LoanApplicationResponse reject(
+            @PathVariable UUID id, @Valid @RequestBody RejectionRequest request) {
+        return loanApplicationService.reject(id, request);
     }
 }

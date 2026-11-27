@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -43,6 +44,25 @@ public class LoanApplication {
 
     @Column(name = "submitted_at", nullable = false)
     private Instant submittedAt;
+
+    @Column(name = "reviewer_id", length = 100)
+    private String reviewerId;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
+    @Column(name = "decided_at")
+    private Instant decidedAt;
+
+    @Column(name = "decision_reason", length = 200)
+    private String decisionReason;
+
+    @Column(name = "decision_note", length = 200)
+    private String decisionNote;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     protected LoanApplication() {
         // required by JPA
@@ -108,5 +128,49 @@ public class LoanApplication {
 
     public Instant getSubmittedAt() {
         return submittedAt;
+    }
+
+    public String getReviewerId() {
+        return reviewerId;
+    }
+
+    public void setReviewerId(String reviewerId) {
+        this.reviewerId = reviewerId;
+    }
+
+    public Instant getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public void setReviewedAt(Instant reviewedAt) {
+        this.reviewedAt = reviewedAt;
+    }
+
+    public Instant getDecidedAt() {
+        return decidedAt;
+    }
+
+    public void setDecidedAt(Instant decidedAt) {
+        this.decidedAt = decidedAt;
+    }
+
+    public String getDecisionReason() {
+        return decisionReason;
+    }
+
+    public void setDecisionReason(String decisionReason) {
+        this.decisionReason = decisionReason;
+    }
+
+    public String getDecisionNote() {
+        return decisionNote;
+    }
+
+    public void setDecisionNote(String decisionNote) {
+        this.decisionNote = decisionNote;
+    }
+
+    public long getVersion() {
+        return version;
     }
 }

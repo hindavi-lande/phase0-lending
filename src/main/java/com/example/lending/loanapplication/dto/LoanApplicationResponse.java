@@ -13,7 +13,12 @@ public record LoanApplicationResponse(
         int termMonths,
         String purpose,
         LoanApplicationStatus status,
-        Instant submittedAt) {
+        Instant submittedAt,
+        String reviewerId,
+        Instant reviewedAt,
+        Instant decidedAt,
+        String decisionReason,
+        String decisionNote) {
 
     public static LoanApplicationResponse from(LoanApplication application) {
         return new LoanApplicationResponse(
@@ -23,6 +28,11 @@ public record LoanApplicationResponse(
                 application.getTermMonths(),
                 application.getPurpose(),
                 application.getStatus(),
-                application.getSubmittedAt());
+                application.getSubmittedAt(),
+                application.getReviewerId(),
+                application.getReviewedAt(),
+                application.getDecidedAt(),
+                application.getDecisionReason(),
+                application.getDecisionNote());
     }
 }
