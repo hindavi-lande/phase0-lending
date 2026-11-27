@@ -68,7 +68,8 @@ public class LoanApplicationService {
         loanApplicationRepository.delete(findOrThrow(id));
     }
 
-    private LoanApplication findOrThrow(UUID id) {
+    @Transactional(readOnly = true)
+    public LoanApplication findOrThrow(UUID id) {
         return loanApplicationRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Loan application not found: " + id));

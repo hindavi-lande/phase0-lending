@@ -42,7 +42,7 @@ as a flat `borrowerId` so responses never leak the entity graph.
 
 ## API
 
-Both resources expose the same five operations.
+Both resources expose the same five CRUD operations.
 
 | Method | Path | Success |
 |---|---|---|
@@ -51,6 +51,7 @@ Both resources expose the same five operations.
 | `GET` | `/api/{borrowers,loan-applications}` | `200` (unpaged list) |
 | `PUT` | `/api/{borrowers,loan-applications}/{id}` | `200` (full replace) |
 | `DELETE` | `/api/{borrowers,loan-applications}/{id}` | `204` |
+| `POST` | `/api/loan-applications/{id}/affordability-pre-check` | `200` (read-only estimate) |
 
 `GET /api/loan-applications?borrowerId={id}` filters by borrower.
 
@@ -67,6 +68,67 @@ curl -s -X POST localhost:8084/api/loan-applications \
   -H 'Content-Type: application/json' \
   -d "{\"borrowerId\":\"$ID\",\"requestedAmount\":25000.00,\"termMonths\":24,\"purpose\":\"Home renovation\",\"status\":\"SUBMITTED\"}"
 ```
+
+### Affordability pre-check
+
+`POST /api/loan-applications/{applicationId}/affordability-pre-check` estimates the
+monthly instalment, total payable, total interest and debt-to-income ratio for an
+existing application. It is read-only: it writes no rows and neither approves nor
+rejects the application.
+
+Both request fields are optional:
+
+| Field | Default | Rules |
+|---|---|---|
+| `annualInterestRate` | `12.50` (configured) | 0 to 36 inclusive |
+| `existingMonthlyObligations` | `0.00` | not negative, at most 2 decimals |
+
+```bash
+curl -s -X POST "localhost:8084/api/loan-applications/$APPLICATION_ID/affordability-pre-check" \
+  -H 'Content-Type: application/json' \
+  -d '{"annualInterestRate": 12.50, "existingMonthlyObligations": 1500.00}'
+```
+
+```json
+{
+  "applicationId": "…",
+  "borrowerId": "…",
+  "requestedAmount": 25000.00,
+  "termMonths": 24,
+  "annualInterestRate": 12.50,
+  "monthlyIncome": 10000.00,
+  "estimatedMonthlyInstalment": 1182.68,
+  "existingMonthlyObligations": 1500.00,
+  "totalMonthlyOutgo": 2682.68,
+  "totalPayable": 28384.32,
+  "totalInterest": 3384.32,
+  "debtToIncomeRatio": 26.83,
+  "decision": "ELIGIBLE",
+  "reasons": ["WITHIN_AFFORDABILITY_LIMIT"],
+  "thresholds": { "preferredMaxDti": 40.00, "hardMaxDti": 50.00 }
+}
+```
+
+Money is scale 2 with `HALF_UP`; the ratio is reported to 2 decimals. Monthly income is
+the borrower's annual income divided by 12. The instalment uses the reducing-balance EMI
+formula, with principal divided by term at 0% interest. When monthly income is zero the
+ratio is `null` and the decision is `INELIGIBLE` with reason `INCOME_NOT_POSITIVE`.
+
+Decision bands, inclusive at both edges:
+
+| Ratio | Decision | Reason |
+|---|---|---|
+| at most preferred | `ELIGIBLE` | `WITHIN_AFFORDABILITY_LIMIT` |
+| above preferred, at most hard | `REFERRED` | `ABOVE_PREFERRED_LIMIT` |
+| above hard | `INELIGIBLE` | `ABOVE_MAXIMUM_LIMIT` |
+
+Configuration keys (all optional, relaxed binding and environment overrides apply):
+
+| Key | Default | Rules |
+|---|---|---|
+| `lending.affordability.default-annual-interest-rate` | `12.50` | 0 to 36 inclusive |
+| `lending.affordability.preferred-max-dti` | `40.00` | 0 to 100, strictly below the hard threshold |
+| `lending.affordability.hard-max-dti` | `50.00` | 0 to 100, strictly above the preferred threshold |
 
 ## Errors
 
@@ -95,11 +157,15 @@ com.example.lending
 ├── LendingApplication.java
 ├── common/              ApiError, GlobalExceptionHandler, 3 exception types
 ├── borrower/            entity, enum, repository, service, controller, dto/
-└── loanapplication/     entity, enum, repository, service, controller, dto/
+├── loanapplication/     entity, enum, repository, service, controller, dto/
+└── affordability/       properties, calculator, service, controller, enums, dto/
 ```
 
 Each slice is self-contained; `LoanApplicationService` resolves the FK through
 `BorrowerService.findOrThrow`, which is the single place the `Borrower` 404 is raised.
+`AffordabilityService` resolves the application through
+`LoanApplicationService.findOrThrow`, which is the single place the
+`LoanApplication` 404 is raised.
 
 ## Tests
 
@@ -108,3 +174,6 @@ Integration tests run against real H2 with `MockMvc`:
 - `LendingApplicationTests` — context loads with both slices wired
 - `BorrowerControllerIntegrationTest` — full CRUD, duplicate email, validation, delete guard
 - `LoanApplicationControllerIntegrationTest` — full CRUD, borrower FK, filtering, validation
+- `AffordabilityCalculatorTest` — EMI maths, 0% rate, rounding, decision bands, zero income
+- `AffordabilityControllerIntegrationTest` — endpoint response, overrides, validation, 404, no-write guarantee
+- `AffordabilityPropertiesTest` — configuration defaults, overrides and invalid thresholds
